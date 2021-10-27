@@ -14,20 +14,26 @@ for key in conn.list_objects(Bucket='usu-cs5260-peytonkiel-requests')['Contents'
 keyList.sort(key = int)
 
 
+
 for j in keyList:
+    try:
+        content_object = s3.Object('usu-cs5260-peytonkiel-requests', str(j))
+        file_content = content_object.get()['Body'].read().decode('utf-8')
+        json_content = json.loads(file_content)
+        oname = json_content['owner'].lower().replace(" ", "-")
+        wid = json_content['widgetId']
 
-    content_object = s3.Object('usu-cs5260-peytonkiel-requests', str(j))
-    file_content = content_object.get()['Body'].read().decode('utf-8')
-    json_content = json.loads(file_content)
-    oname = json_content['owner'].lower().replace(" ", "-")
-    wid = json_content['widgetId']
+        keyName = "widgets/" + oname + "/" + wid
+        
+        copy_source = {
+        'Bucket': 'usu-cs5260-peytonkiel-requests',
+        'Key': str(j)
+        }
 
-    keyName = "widgets/" + oname + "/" + wid
-    
-    copy_source = {
-    'Bucket': 'usu-cs5260-peytonkiel-requests',
-    'Key': str(j)
-    }
+        s3.meta.client.copy(copy_source, 'usu-cs5260-peytonkiel-web', keyName)
+        print("Created Object in Bucket: usu-cs5260-peytonkiel-web (Key: " + keyName + ")")
 
-    s3.meta.client.copy(copy_source, 'usu-cs5260-peytonkiel-web', keyName)
-    print(j + " - Created Object in Bucket 3 (Key: " + keyName + ")")
+        s3.Object('usu-cs5260-peytonkiel-requests', str(j)).delete()
+
+    except KeyError:
+        print('ERROR: CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
