@@ -52,11 +52,13 @@ def dynamo():
                 }
                     )
             logging.debug("Created Object in DynamoDB: " + str(locationName) +" (Key: " + str(j) + ")")
+            print("Created Object in DynamoDB: " + str(locationName) +" (Key: " + str(j) + ")")
             s3.Object(Bucket, str(j)).delete()
             
 
         except KeyError:
             logging.error('CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
+            print('ERROR: CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
             s3.Object(Bucket, str(j)).delete()
 
     keyList.clear()
@@ -81,12 +83,13 @@ def create():
 
             s3.meta.client.copy(copy_source, str(locationName), keyName)
             logging.debug("Created Object in Bucket: " + str(locationName) +" (Key: " + keyName + ")")
-
+            print("Created Object in Bucket: " + str(locationName) +" (Key: " + keyName + ")")
             s3.Object(Bucket, str(j)).delete()
             
 
         except KeyError:
             logging.error('CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
+            print('ERROR: CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
             s3.Object(Bucket, str(j)).delete()
 
     keyList.clear()
