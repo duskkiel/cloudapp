@@ -3,16 +3,26 @@ import json
 from boto3 import client
 from time import sleep
 import sys
+import logging
 
 s3 = boto3.resource('s3')
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 table = dynamodb.Table("widgets")
 k = 2
-Bucket = 'usu-cs5260-peytonkiel-requests'
+logging.basicConfig(level=logging.DEBUG, filename='myapp.log', format='%(asctime)s %(levelname)s:%(message)s')
 
-# secondCom = sys.argv[1]
-# thirdCom = sys.argv[2]
+if len(sys.argv) != 4:
+    print("Please use format:")
+    print("   python consumer.py [requests source] [s3 or dynamo] [requests target (s3 bucket or dynamodb)]")
+    print("   ex. 'python consumer.py usu-mybucket s3 usu-mybucket2'")
+    print("       'python consumer.py usu-mybucket dynamo mytable'")
+    quit()
 
+sourceBucket = sys.argv[1]
+location = sys.argv[2]
+locationName = sys.argv[3]
+
+Bucket = str(sourceBucket)
 
 def dynamo():
     for j in keyList:
@@ -20,7 +30,7 @@ def dynamo():
             content_object = s3.Object(Bucket, str(j))
             file_content = content_object.get()['Body'].read().decode('utf-8')
             json_content = json.loads(file_content)
-            oname = json_content['owner'].lower().replace(" ", "-")
+            oname = json_content['owner']
             wid = json_content['widgetId']
             ty = json_content['type']
             rid = json_content['requestId']
@@ -29,7 +39,7 @@ def dynamo():
             oa = json_content['otherAttributes']
 
             table.put_item(
-                TableName='widgets',
+                TableName=str(locationName),
                 Item = {
                     "id": str(j),
                     "type":str(ty),
@@ -41,13 +51,12 @@ def dynamo():
                     "otherAttributes":str(oa)
                 }
                     )
-
-
+            logging.debug("Created Object in DynamoDB: " + str(locationName) +" (Key: " + str(j) + ")")
             s3.Object(Bucket, str(j)).delete()
             
 
         except KeyError:
-            print('ERROR: CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
+            logging.error('CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
             s3.Object(Bucket, str(j)).delete()
 
     keyList.clear()
@@ -70,18 +79,17 @@ def create():
             'Key': str(j)
             }
 
-            s3.meta.client.copy(copy_source, 'usu-cs5260-peytonkiel-web', keyName)
-            print("Created Object in Bucket: usu-cs5260-peytonkiel-web (Key: " + keyName + ")")
+            s3.meta.client.copy(copy_source, str(locationName), keyName)
+            logging.debug("Created Object in Bucket: " + str(locationName) +" (Key: " + keyName + ")")
 
             s3.Object(Bucket, str(j)).delete()
             
 
         except KeyError:
-            print('ERROR: CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
+            logging.error('CREATION OF OBJECT CONSUMED AT KEY ' + j + " FAILED")
             s3.Object(Bucket, str(j)).delete()
 
     keyList.clear()
-
 
 
 while k == 2:
@@ -93,9 +101,11 @@ while k == 2:
 
         keyList.sort(key = int)
 
-        # create()
-        dynamo()
+        if location == "s3":
+            create()
+        if location == "dynamo":
+            dynamo()
 
     except KeyError:
-        print("Empty Bucket")
-        sleep(1)
+        logging.debug("Empty Bucket")
+        sleep(0.1)
